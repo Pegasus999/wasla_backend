@@ -1,0 +1,87 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Client {
+  id          String   @id @default(uuid())
+  firstName   String
+  lastName    String
+  phoneNumber String   @unique
+  favorites   Places[]
+  trips       Trip[]
+}
+
+model Places {
+  id         String  @id @default(uuid())
+  name       String
+  latitude   String
+  longtitude String
+  Client     Client? @relation(fields: [clientId], references: [id])
+  clientId   String?
+}
+
+enum iDriver {
+  taxi
+  tow
+}
+
+model Driver {
+  id            String  @id @default(uuid())
+  firstName     String
+  lastName      String
+  latitude      Float
+  longtitude    Float
+  phoneNumber   String  @unique
+  driverLicense String
+  registeration String
+  wilaya        Int
+  carBrand      String
+  carName       String
+  licensePlate  String
+  active        Boolean
+  type          iDriver
+  trips         Trip[]
+}
+
+model Trip {
+  id                       String  @id @default(uuid())
+  driver                   Driver? @relation(fields: [driverId], references: [id])
+  client                   Client  @relation(fields: [clientId], references: [id])
+  duration                 String?
+  pickUpLocationLatitude   Float
+  pickUpLocationLongtitude Float
+  date                     String
+  destinationLatitude      Float
+  destinationLongtitude    Float
+  cost                     Int
+
+  driverId String?
+  clientId String
+}
+
+enum ShopType {
+  carwash
+  mechanic
+  tollier
+}
+
+model Shop {
+  id            String   @id @default(uuid())
+  name          String
+  latitude      Float
+  longtitude    Float
+  phoneNumber   String
+  clicks        Int
+  ownerFullName String
+  licenseNumber String
+  wilaya        Int
+  type          ShopType
+}
