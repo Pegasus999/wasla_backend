@@ -12,6 +12,7 @@ const client = require("twilio")(accountSid, authToken);
 export const signinPhoneController = async (req: Request, res: Response) => {
   try {
     let { phoneNumber } = req.body;
+    console.log("here");
     let user: Client | null = await db.client.findUniqueOrThrow({
       where: { phoneNumber },
       include: {
@@ -42,6 +43,36 @@ export const singUpController = async (req: Request, res: Response) => {
       },
       include: {
         favorites: true,
+      },
+    });
+    user
+      ? res.status(200).json({ user, message: "User created" })
+      : res.status(400).json({ message: "An error occured" });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ message: err });
+  }
+};
+
+export const signUpDriver = async (req: Request, res: Response) => {
+  try {
+    let { firstName, lastName, phoneNumber } = req.body;
+
+    let user: Driver | null = await db.driver.create({
+      data: {
+        firstName,
+        lastName,
+        phoneNumber,
+        active: false,
+        carBrand: "Renault",
+        carName: "Symbol",
+        licensePlate: "265649 - 116 - 25",
+        latitude: 0.0,
+        longtitude: 0.0,
+        driverLicense: "2648421384932",
+        registeration: "61654984513",
+        type: "taxi",
+        wilaya: 25,
       },
     });
     user

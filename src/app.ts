@@ -6,8 +6,8 @@ import {
   cancelRide,
   endRide,
   rideRequest,
-  updateLocation,
 } from "./Controllers/taxiController";
+import { disconnect, updateLocation } from "./Controllers/driversController";
 import { PrismaClient, Trip } from "@prisma/client";
 import {
   acceptTowRequest,
@@ -50,7 +50,7 @@ const io = new Server(server);
 
 const port = 5000;
 
-server.listen(port, "192.168.201.133", () => {
+server.listen(port, "172.20.10.5", () => {
   console.log(`Server listening on ${port}`);
 });
 
@@ -70,6 +70,12 @@ io.on("connection", (socket) => {
   });
 
   socket.on("driverLocationUpdate", async (data) => {
+    await updateLocation(socket, data);
+  });
+
+  socket.on("locationUpdate", async (data) => {
+    console.log(data);
+
     await updateLocation(socket, data);
   });
 
@@ -97,6 +103,13 @@ io.on("connection", (socket) => {
     await cancelTow(socket, data);
   });
 
+  socket.on("disconnect", async (data) => {
+    const id = getKeyByValue(connections, socket.id);
+    console.log(id);
+    await disconnect(id);
+    socket.emit("disconnected", id);
+  });
+
   socket.on("add", (data) => {
     connections.set(data.userId, socket.id);
     console.log(connections);
@@ -108,3 +121,13 @@ io.on("connection", (socket) => {
     connections.set(data.userId, socket.id);
   });
 });
+
+function getKeyByValue(map: any, targetValue: any) {
+  for (const [key, value] of map.entries()) {
+    if (value === targetValue) {
+      return key; // Return the key when the value matches the targetValue
+    }
+  }
+  // If the value is not found, you can return null or handle it as needed
+  return null;
+}

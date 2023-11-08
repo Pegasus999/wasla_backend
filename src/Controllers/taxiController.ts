@@ -65,24 +65,24 @@ const lookForDriver = async (
 let clientDrivers = new Map();
 
 export const rideRequest = async (socket: Socket, body: any) => {
-  const {
-    wilaya,
-    userId,
-    cost,
-    destinationLatitude,
-    destinationLongtitude,
-    pickUpLocationLatitude,
-    pickUpLocationLongtitude,
-  } = body;
-  const drivers = await lookForDriver(
-    pickUpLocationLatitude,
-    pickUpLocationLongtitude,
-    wilaya
-  );
-  let date = new Date();
-  let trip: Trip | null = null;
-  if (drivers.length > 0) {
-    try {
+  try {
+    const {
+      wilaya,
+      userId,
+      cost,
+      destinationLatitude,
+      destinationLongtitude,
+      pickUpLocationLatitude,
+      pickUpLocationLongtitude,
+    } = body;
+    const drivers = await lookForDriver(
+      pickUpLocationLatitude,
+      pickUpLocationLongtitude,
+      wilaya
+    );
+    let date = new Date();
+    let trip: Trip | null = null;
+    if (drivers.length > 0) {
       trip = await db.trip.create({
         data: {
           destinationLatitude,
@@ -101,21 +101,21 @@ export const rideRequest = async (socket: Socket, body: any) => {
           client: true,
         },
       });
-    } catch (error) {
-      socket.emit("rideError", { message: "An error occured", error });
-      return;
     }
-  }
-  let ids = drivers.map((driver) => driver.id);
-  let connectionIds = ids
-    .map((id) => connections.get(id))
-    .filter((value) => value != null);
-
-  if (connectionIds.length > 0) {
-    clientDrivers.set(userId, connectionIds);
-    socket.to(connectionIds).emit("rideRequest", { trip });
-  } else {
-    socket.emit("noRides", "sorry no rides within 8 km radius");
+    let ids = drivers.map((driver) => driver.id);
+    let connectionIds = ids
+      .map((id) => connections.get(id))
+      .filter((value) => value != null);
+    console.log(connectionIds);
+    if (connectionIds.length > 0) {
+      clientDrivers.set(userId, connectionIds);
+      socket.to(connectionIds).emit("rideRequest", { trip });
+    } else {
+      socket.emit("noRides", "sorry no rides within 8 km radius");
+    }
+  } catch (error) {
+    console.log(error);
+    socket.emit("error");
   }
 };
 
@@ -203,12 +203,14 @@ export const endRide = async (socket: Socket, body: any) => {
 
 export const cancelRide = async (socket: Socket, body: any) => {
   try {
-    const { tripdId } = body;
-    const trip = await db.trip.delete({ where: { id: tripdId } });
+    const { tripId } = body;
+    const trip = await db.trip.delete({ where: { id: tripId } });
     socket.emit("rideCancel", { trip });
     if (trip.driverId) {
       const driver = connections.get(trip.driverId);
       const client = connections.get(trip.clientId);
+      console.log(driver);
+      console.log(client);
       socket.to(driver).emit("rideCancel", { message: "ride was canceled" });
       socket.to(client).emit("rideCancel", { message: "ride was canceled" });
     } else {

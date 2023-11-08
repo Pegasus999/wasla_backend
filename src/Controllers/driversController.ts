@@ -1,6 +1,7 @@
 import { Driver, PrismaClient, Trip } from "@prisma/client";
 
 import { Request, Response } from "express";
+import { Socket } from "socket.io";
 
 let db = new PrismaClient();
 
@@ -32,6 +33,40 @@ export const getState = async (req: Request, res: Response) => {
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "An Error Occured" });
+  }
+};
+
+export const disconnect = async (id: string) => {
+  try {
+    const driver: Driver | null = await db.driver.update({
+      where: {
+        id,
+      },
+      data: {
+        active: false,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const updateLocation = async (socket: Socket, body: any) => {
+  try {
+    const { userId, latitude, longtitude } = body;
+    const driver: Driver | null = await db.driver.update({
+      where: { id: userId },
+      data: {
+        latitude,
+        longtitude,
+      },
+    });
+
+    console.log(driver);
+    socket.emit("updateLocation", driver);
+  } catch (error) {
+    console.log(error);
+    socket.emit("error");
   }
 };
 
