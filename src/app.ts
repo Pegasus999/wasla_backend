@@ -36,9 +36,7 @@ app.use("/api/driver", driver);
 
 app.post("/test", async (req: Request, res: Response) => {
   try {
-    let date = new Date();
-    console.log(date.toLocaleString());
-    res.status(200).json(date);
+    res.status(200).json({ message: "WORKS" });
   } catch (error) {
     console.log(error);
     res.status(500).json(error);
@@ -50,7 +48,7 @@ const io = new Server(server);
 
 const port = 5000;
 
-server.listen(port, "172.20.10.5", () => {
+server.listen(port, () => {
   console.log(`Server listening on ${port}`);
 });
 
