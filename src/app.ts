@@ -6,8 +6,9 @@ import {
   cancelRide,
   endRide,
   rideRequest,
+  updateLocation,
 } from "./Controllers/taxiController";
-import { disconnect, updateLocation } from "./Controllers/driversController";
+import { disconnect } from "./Controllers/driversController";
 import { PrismaClient, Trip } from "@prisma/client";
 import {
   acceptTowRequest,
@@ -34,12 +35,24 @@ app.use("/api/shop", shop);
 const driver = require("./Routes/drivers");
 app.use("/api/driver", driver);
 
+// Client Routes
+const client = require("./Routes/client");
+app.use("/api/client", client);
+
 app.post("/test", async (req: Request, res: Response) => {
   try {
-    res.status(200).json({ message: "WORKS" });
+    const drivers = await db.driver.findMany({
+      where: {
+        type: "taxi",
+        active: true,
+        wilaya: 25,
+        trips: { every: { state: { not: "ongoing" } } },
+      },
+    });
+    res.status(200).json({ drivers });
   } catch (error) {
     console.log(error);
-    res.status(500).json(error);
+    res.status(500).json({ message: "An Error Occured" });
   }
 });
 
@@ -67,17 +80,12 @@ io.on("connection", (socket) => {
     await acceptRequest(socket, data);
   });
 
-  socket.on("driverLocationUpdate", async (data) => {
-    await updateLocation(socket, data);
-  });
-
-  socket.on("locationUpdate", async (data) => {
-    console.log(data);
-
+  socket.on("updateLocation", async (data) => {
     await updateLocation(socket, data);
   });
 
   socket.on("rideEnd", async (data) => {
+    console.log("here");
     await endRide(socket, data);
   });
 

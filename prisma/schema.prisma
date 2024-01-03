@@ -37,8 +37,8 @@ model Driver {
   id            String  @id @default(uuid())
   firstName     String
   lastName      String
-  latitude      Float
-  longtitude    Float
+  latitude      Float?
+  longtitude    Float?
   phoneNumber   String  @unique
   driverLicense String
   registeration String
@@ -52,19 +52,26 @@ model Driver {
 }
 
 model Trip {
-  id                       String  @id @default(uuid())
-  driver                   Driver? @relation(fields: [driverId], references: [id])
-  client                   Client  @relation(fields: [clientId], references: [id])
+  id                       String   @id @default(uuid())
+  driver                   Driver?  @relation(fields: [driverId], references: [id])
+  client                   Client   @relation(fields: [clientId], references: [id])
   duration                 String?
   pickUpLocationLatitude   Float
   pickUpLocationLongtitude Float
-  date                     String
+  date                     DateTime @default(now())
   destinationLatitude      Float
   destinationLongtitude    Float
   cost                     Int
+  canceledBy               String?
+  state                    State    @default(ongoing)
+  driverId                 String?
+  clientId                 String
+}
 
-  driverId String?
-  clientId String
+enum State {
+  complete
+  canceled
+  ongoing
 }
 
 enum ShopType {

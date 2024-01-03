@@ -33,7 +33,12 @@ const lookForDriver = async (
   wilaya: number
 ): Promise<Driver[]> => {
   const drivers: Driver[] | null = await db.driver.findMany({
-    where: { type: "taxi", active: true, wilaya },
+    where: {
+      type: "taxi",
+      active: true,
+      wilaya,
+      trips: { every: { state: { not: "ongoing" } } },
+    },
   });
 
   let nearbyDrivers: Driver[] = drivers.filter((driver) => {
@@ -41,8 +46,8 @@ const lookForDriver = async (
       calculateDistance(
         latitude,
         longtitude,
-        driver.latitude,
-        driver.longtitude
+        driver.latitude!,
+        driver.longtitude!
       ) < 5
     );
   });
@@ -53,8 +58,8 @@ const lookForDriver = async (
         calculateDistance(
           latitude,
           longtitude,
-          driver.latitude,
-          driver.longtitude
+          driver.latitude!,
+          driver.longtitude!
         ) < 8
       );
     });
@@ -80,13 +85,11 @@ export const rideRequest = async (socket: Socket, body: any) => {
       pickUpLocationLongtitude,
       wilaya
     );
-    let date = new Date();
     let trip: Trip | null = null;
     if (drivers.length > 0) {
       trip = await db.trip.create({
         data: {
           destinationLatitude,
-          date: date.toLocaleString(),
           destinationLongtitude,
           pickUpLocationLongtitude,
           pickUpLocationLatitude,
@@ -101,6 +104,7 @@ export const rideRequest = async (socket: Socket, body: any) => {
           client: true,
         },
       });
+      returnTripToClient(trip, socket);
     }
     let ids = drivers.map((driver) => driver.id);
     let connectionIds = ids
@@ -108,7 +112,20 @@ export const rideRequest = async (socket: Socket, body: any) => {
       .filter((value) => value != null);
     console.log(connectionIds);
     if (connectionIds.length > 0) {
+      // Set a timeout for driver response (e.g., 2 minutes)
+      setTimeout(async () => {
+        let check = await db.trip.findUnique({ where: { id: trip!.id } });
+        if (check?.state == "ongoing" && check.driverId == null) {
+          check = await db.trip.update({
+            where: { id: check.id },
+            data: { state: "canceled" },
+          });
+          console.log(check?.state);
+          console.log("trip canceled");
+        }
+      }, 120000);
       clientDrivers.set(userId, connectionIds);
+
       socket.to(connectionIds).emit("rideRequest", { trip });
     } else {
       socket.emit("noRides", "sorry no rides within 8 km radius");
@@ -119,9 +136,18 @@ export const rideRequest = async (socket: Socket, body: any) => {
   }
 };
 
+const returnTripToClient = (trip: Trip, socket: Socket) => {
+  const client = connections.get(trip.clientId);
+  console.log("in returning the trip to the client before the acceptance");
+  // in returning the trip to the client before the acceptance"
+  console.log(client);
+  console.log(trip);
+  socket.emit("tripCreated", { trip });
+};
+
 export const updateLocation = async (socket: Socket, body: any) => {
   try {
-    const { clientId, userId, latitude, longtitude } = body;
+    const { userId, latitude, longtitude } = body;
     const driver: Driver | null = await db.driver.update({
       where: { id: userId },
       data: {
@@ -130,8 +156,12 @@ export const updateLocation = async (socket: Socket, body: any) => {
       },
     });
 
-    if (clientId) {
-      const client = connections.get(clientId);
+    const user = await db.trip.findFirst({
+      select: { client: true },
+      where: { driverId: userId, state: "ongoing" },
+    });
+    if (user) {
+      const client = connections.get(user?.client.id);
       socket.to(client).emit("driverLocationUpdate", { driver });
     }
   } catch (error) {
@@ -141,12 +171,18 @@ export const updateLocation = async (socket: Socket, body: any) => {
 };
 
 export const acceptRequest = async (socket: Socket, body: any) => {
-  const { userId, tripId } = body;
+  const { userId, tripId, timeoutId } = body;
   try {
     const check: Trip | null = await db.trip.findUnique({
       where: { id: tripId },
       include: { driver: true, client: true },
     });
+    console.log(
+      check?.pickUpLocationLatitude + " " + check?.pickUpLocationLongtitude
+    );
+    console.log(
+      check?.destinationLatitude + " " + check?.destinationLongtitude
+    );
     let trip: Trip | null = null;
     if (!check?.driverId) {
       trip = await db.trip.update({
@@ -172,11 +208,10 @@ export const acceptRequest = async (socket: Socket, body: any) => {
         clientDrivers.delete(trip.clientId);
       }
       const client = connections.get(trip.clientId);
-      console.log(client);
+
+      clearTimeout(timeoutId);
       socket.emit("rideAccept", { trip });
       socket.to(client).emit("rideAccept", { trip });
-    } else {
-      socket.emit("rideError", { message: "Already taken" });
     }
   } catch (error) {
     console.log(error);
@@ -186,41 +221,56 @@ export const acceptRequest = async (socket: Socket, body: any) => {
 
 export const endRide = async (socket: Socket, body: any) => {
   try {
+    console.log("ending");
+    console.log(body);
     const { tripId, duration } = body;
     const trip: Trip | null = await db.trip.update({
       where: { id: tripId },
       data: {
         duration,
+        state: "complete",
       },
     });
+
+    console.log(trip);
     const client = connections.get(trip.clientId);
-    socket.emit("endRide", { trip });
-    socket.to(client).emit("endRide", { trip });
+    socket.to(client).emit("rideEnd", { trip });
+    socket.emit("rideEnd", { trip });
   } catch (error) {
-    socket.emit("rideError", { message: "An error occured", error });
+    console.log(error);
+    socket.emit("error", { message: "An error occured", error });
   }
 };
 
 export const cancelRide = async (socket: Socket, body: any) => {
   try {
-    const { tripId } = body;
-    const trip = await db.trip.delete({ where: { id: tripId } });
-    socket.emit("rideCancel", { trip });
-    if (trip.driverId) {
-      const driver = connections.get(trip.driverId);
-      const client = connections.get(trip.clientId);
-      console.log(driver);
-      console.log(client);
-      socket.to(driver).emit("rideCancel", { message: "ride was canceled" });
-      socket.to(client).emit("rideCancel", { message: "ride was canceled" });
-    } else {
-      const list: string[] = clientDrivers.get(trip.clientId);
-      if (list.length > 0) {
-        socket.to(list).emit("rideCancel", "ride was cancelled");
-        clientDrivers.delete(trip.clientId);
+    const { tripId, userId } = body;
+    const check = await db.trip.findUniqueOrThrow({ where: { id: tripId } });
+    if (check.state != "complete") {
+      const trip = await db.trip.update({
+        where: { id: tripId },
+        data: { state: "canceled", canceledBy: userId },
+      });
+      console.log("cancelling");
+      console.log(trip);
+      if (trip.driverId) {
+        const driver = connections.get(trip.driverId);
+        const client = connections.get(trip.clientId);
+
+        socket
+          .to(driver)
+          .emit("rideCancel", { message: "ride was canceled", byWho: userId });
+
+        socket
+          .to(client)
+          .emit("rideCancel", { message: "ride was canceled", byWho: userId });
+      } else {
+        let drivers = clientDrivers.get(userId);
+
+        socket.to(drivers).emit("rideCancel", { trip });
       }
     }
   } catch (error) {
-    socket.emit("rideError", { message: "An error occured", error });
+    socket.emit("error", { message: "An error occured", error });
   }
 };

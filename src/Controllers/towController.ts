@@ -42,8 +42,8 @@ const lookForDriver = async (
         calculateDistance(
           latitude,
           longtitude,
-          driver.latitude,
-          driver.longtitude
+          driver.latitude!,
+          driver.longtitude!
         ) < km
       );
     });
