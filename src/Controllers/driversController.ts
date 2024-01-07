@@ -50,7 +50,7 @@ export const getTrips = async (req: Request, res: Response) => {
   try {
     const { id } = req.body;
     const trips: Trip[] | null = await db.trip.findMany({
-      where: { driverId: id },
+      where: { driverId: id, state: "complete" },
       include: {
         client: true,
         driver: true,
