@@ -11,21 +11,11 @@ datasource db {
 }
 
 model Client {
-  id          String   @id @default(uuid())
+  id          String @id @default(uuid())
   firstName   String
   lastName    String
-  phoneNumber String   @unique
-  favorites   Places[]
+  phoneNumber String @unique
   trips       Trip[]
-}
-
-model Places {
-  id         String  @id @default(uuid())
-  name       String
-  latitude   String
-  longtitude String
-  Client     Client? @relation(fields: [clientId], references: [id])
-  clientId   String?
 }
 
 enum iDriver {

@@ -18,23 +18,12 @@ CREATE TABLE "Client" (
 );
 
 -- CreateTable
-CREATE TABLE "Places" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "latitude" TEXT NOT NULL,
-    "longtitude" TEXT NOT NULL,
-    "clientId" TEXT,
-
-    CONSTRAINT "Places_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "Driver" (
     "id" TEXT NOT NULL,
     "firstName" TEXT NOT NULL,
     "lastName" TEXT NOT NULL,
-    "latitude" DOUBLE PRECISION NOT NULL,
-    "longtitude" DOUBLE PRECISION NOT NULL,
+    "latitude" DOUBLE PRECISION,
+    "longtitude" DOUBLE PRECISION,
     "phoneNumber" TEXT NOT NULL,
     "driverLicense" TEXT NOT NULL,
     "registeration" TEXT NOT NULL,
@@ -54,7 +43,7 @@ CREATE TABLE "Trip" (
     "duration" TEXT,
     "pickUpLocationLatitude" DOUBLE PRECISION NOT NULL,
     "pickUpLocationLongtitude" DOUBLE PRECISION NOT NULL,
-    "date" TEXT NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "destinationLatitude" DOUBLE PRECISION NOT NULL,
     "destinationLongtitude" DOUBLE PRECISION NOT NULL,
     "cost" INTEGER NOT NULL,
@@ -87,9 +76,6 @@ CREATE UNIQUE INDEX "Client_phoneNumber_key" ON "Client"("phoneNumber");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Driver_phoneNumber_key" ON "Driver"("phoneNumber");
-
--- AddForeignKey
-ALTER TABLE "Places" ADD CONSTRAINT "Places_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Trip" ADD CONSTRAINT "Trip_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "Driver"("id") ON DELETE SET NULL ON UPDATE CASCADE;

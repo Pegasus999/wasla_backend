@@ -41,14 +41,7 @@ app.use("/api/client", client);
 
 app.post("/test", async (req: Request, res: Response) => {
   try {
-    const drivers = await db.driver.findMany({
-      where: {
-        type: "taxi",
-        active: true,
-        wilaya: 25,
-        trips: { every: { state: { not: "ongoing" } } },
-      },
-    });
+    const drivers = await db.driver.findMany({});
     res.status(200).json({ drivers });
   } catch (error) {
     console.log(error);
