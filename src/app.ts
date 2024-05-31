@@ -16,12 +16,23 @@ import {
   towRequest,
   updateTowLocation,
 } from "./Controllers/towController";
+import cors from "cors";
+
+
+
+
 
 let db = new PrismaClient();
 const express = require("express");
 
 const app = express();
 app.use(express.json());
+
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+  })
+);
 
 // Auth Routes
 const auth = require("./Routes/auth");

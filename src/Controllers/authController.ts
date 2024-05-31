@@ -49,7 +49,7 @@ export const signUpDriver = async (req: Request, res: Response) => {
       carName,
       licensePlate,
       driverLicense,
-      registeration,
+      registration,
       wilaya,
     } = req.body;
 
@@ -65,9 +65,9 @@ export const signUpDriver = async (req: Request, res: Response) => {
         latitude: 0.0,
         longtitude: 0.0,
         driverLicense,
-        registeration,
+        registration,
         type: "taxi",
-        wilaya: wilaya,
+        wilaya: Number(wilaya),
       },
     });
     user

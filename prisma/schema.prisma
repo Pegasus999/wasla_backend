@@ -31,7 +31,7 @@ model Driver {
   longtitude    Float?
   phoneNumber   String  @unique
   driverLicense String
-  registeration String
+  registration  String
   wilaya        Int
   carBrand      String
   carName       String
